@@ -303,16 +303,29 @@
 
 // ── Constants ────────────────────────────────────────────────
 
-// River JSON files from night_time_geoguesser (same data format, different hosting)
 const DATA_BASE = 'https://raw.githubusercontent.com/cobiadigital/night_time_geoguesser/main/';
 
-// The four OHM vector tile styles published on GitHub Pages
-const OHM_STYLES = {
-    main:            'https://openhistoricalmap.github.io/map-styles/main/main.json',
-    woodblock:       'https://openhistoricalmap.github.io/map-styles/woodblock/woodblock.json',
-    rail:            'https://openhistoricalmap.github.io/map-styles/rail/rail.json',
-    japanese_scroll: 'https://openhistoricalmap.github.io/map-styles/japanese_scroll/japanese_scroll.json'
+// Raw GitHub URLs for OHM style JSON files (GitHub Pages returns 404; raw.githubusercontent.com works)
+const OHM_RAW = {
+    main:            'https://raw.githubusercontent.com/OpenHistoricalMap/map-styles/main/main/main.json',
+    woodblock:       'https://raw.githubusercontent.com/OpenHistoricalMap/map-styles/main/woodblock/woodblock.json',
+    rail:            'https://raw.githubusercontent.com/OpenHistoricalMap/map-styles/main/rail/rail.json',
+    japanese_scroll: 'https://raw.githubusercontent.com/OpenHistoricalMap/map-styles/main/japanese_scroll/ohm-japanese-scroll-map.json'
 };
+
+// Inside each style JSON, sprite/glyph URLs point to github.io — rewrite them to raw.githubusercontent.com
+const GH_PAGES_BASE = 'https://openhistoricalmap.github.io/map-styles/';
+const RAW_BASE      = 'https://raw.githubusercontent.com/OpenHistoricalMap/map-styles/main/';
+
+async function fetchStyle(key) {
+    const res   = await fetch(OHM_RAW[key]);
+    if (!res.ok) throw new Error(`Style fetch failed: ${res.status}`);
+    const style = await res.json();
+    // Patch sprite and glyph URLs so they resolve via raw.githubusercontent.com
+    if (style.sprite) style.sprite = style.sprite.replace(GH_PAGES_BASE, RAW_BASE);
+    if (style.glyphs) style.glyphs = style.glyphs.replace(GH_PAGES_BASE, RAW_BASE);
+    return style;
+}
 
 const REGIONS = {
     na: { center: [-98.58,  39.83], zoom: 3,   file: 'na_rivers.json', cityFile: 'na_cities.json' },
@@ -325,18 +338,7 @@ const REGIONS = {
 
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
-// ── App state ────────────────────────────────────────────────
-
-let currentRegion = 'eu';
-let currentDate   = '1850';
-let allRivers     = [];
-let savedRiverFC  = EMPTY_FC;   // persists across style switches
-let savedCityFC   = EMPTY_FC;
-let citiesLoaded  = false;
-let citiesVisible = false;
-let dateTimer     = null;
-
-// ── Panel collapse ────────────────────────────────────────────
+// ── Panel collapse (runs synchronously before map init) ───────
 
 function initPanel(id, key, def) {
     const el = document.getElementById(id);
@@ -353,367 +355,369 @@ initPanel('header', 'ohgis.header', true);
 document.getElementById('header-toggle')
     .addEventListener('click', () => togglePanel('header', 'ohgis.header'));
 
-// ── Map initialisation ────────────────────────────────────────
+// ── Async map bootstrap ───────────────────────────────────────
+// Fetch + patch the style before handing it to MapLibre so all
+// internal sprite/glyph URLs are already pointing at raw.githubusercontent.com
 
-const map = new maplibregl.Map({
-    container: 'map',
-    style:     OHM_STYLES.main,
-    center:    REGIONS.eu.center,
-    zoom:      REGIONS.eu.zoom,
-    minZoom:   1.2,
-    maxZoom:   9
-});
+document.getElementById('loading-badge').classList.add('show');
 
-map.addControl(
-    new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }),
-    'top-right'
-);
+(async () => {
+    const initialStyle = await fetchStyle('main');
 
-// ── Custom river / city layers ────────────────────────────────
+    // ── App state ─────────────────────────────────────────────
+    let currentRegion = 'eu';
+    let currentDate   = '1850';
+    let allRivers     = [];
+    let savedRiverFC  = EMPTY_FC;
+    let savedCityFC   = EMPTY_FC;
+    let citiesLoaded  = false;
+    let citiesVisible = false;
+    let dateTimer     = null;
 
-function addCustomSources() {
-    if (!map.getSource('rivers'))
-        map.addSource('rivers',           { type: 'geojson', data: EMPTY_FC });
-    if (!map.getSource('rivers-highlight'))
-        map.addSource('rivers-highlight', { type: 'geojson', data: EMPTY_FC });
-    if (!map.getSource('cities'))
-        map.addSource('cities',           { type: 'geojson', data: EMPTY_FC });
-}
-
-function addCustomLayers() {
-    if (!map.getLayer('rivers-base')) {
-        map.addLayer({
-            id:     'rivers-base',
-            type:   'line',
-            source: 'rivers',
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: {
-                'line-color': '#75A8C8',
-                'line-width': ['case',
-                    ['<=', ['get', 'scalerank'], 2], 5,
-                    ['<=', ['get', 'scalerank'], 5], 3.5,
-                    2.4
-                ]
-            }
-        });
-    }
-
-    if (!map.getLayer('rivers-highlight')) {
-        map.addLayer({
-            id:     'rivers-highlight',
-            type:   'line',
-            source: 'rivers-highlight',
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: {
-                'line-color': '#FFC107',
-                'line-width': ['case',
-                    ['<=', ['get', 'scalerank'], 2], 6.5,
-                    ['<=', ['get', 'scalerank'], 5], 5,
-                    3.9
-                ]
-            }
-        });
-    }
-
-    if (!map.getLayer('cities-layer')) {
-        map.addLayer({
-            id:     'cities-layer',
-            type:   'circle',
-            source: 'cities',
-            layout: { visibility: citiesVisible ? 'visible' : 'none' },
-            paint: {
-                'circle-color':        '#FF9800',
-                'circle-opacity':      0.8,
-                'circle-stroke-color': 'rgba(255,255,255,0.45)',
-                'circle-stroke-width': 1,
-                'circle-radius': [
-                    'step', ['get', 'pop'],
-                    3, 137491, 5, 292881, 7, 812229, 10, 2000000, 13
-                ]
-            }
-        });
-    }
-}
-
-function restoreData() {
-    if (savedRiverFC.features.length > 0) {
-        map.getSource('rivers').setData(savedRiverFC);
-        applyFilter();
-    }
-    if (citiesLoaded && savedCityFC.features.length > 0) {
-        map.getSource('cities').setData(savedCityFC);
-        if (citiesVisible) applyCityFilter();
-    }
-}
-
-// Called after initial load and after every style switch
-function onStyleReady() {
-    // Force globe projection regardless of what the OHM style specifies
-    try { map.setProjection({ type: 'globe' }); } catch (_) {}
-
-    addCustomSources();
-    addCustomLayers();
-    restoreData();
-
-    // Apply date filter to OHM vector layers
-    if (typeof map.filterByDate === 'function') {
-        map.filterByDate(currentDate);
-    }
-
-    document.getElementById('loading-badge').classList.remove('show');
-}
-
-map.on('load', () => {
-    onStyleReady();
-    loadRegion('eu');
-});
-
-// ── River filtering ───────────────────────────────────────────
-
-function rankAllowedAtZoom(z) {
-    if (z <= 3) return 4;
-    if (z <= 4) return 6;
-    if (z <= 5) return 8;
-    if (z <= 6) return 10;
-    return 99;
-}
-
-function currentMaxRank() {
-    const userMax = parseFloat(document.querySelector('.filter-btn.active').dataset.maxRank);
-    return Math.min(userMax, rankAllowedAtZoom(map.getZoom()));
-}
-
-function applyFilter() {
-    if (!map.getLayer('rivers-base')) return;
-    const limit = currentMaxRank();
-    map.setFilter('rivers-base', ['<=', ['get', 'scalerank'], limit]);
-    const visible = allRivers.filter(r => r.scalerank <= limit).length;
-    document.getElementById('count-label').textContent = `${visible} rivers`;
-    clearHighlight();
-    applyCityFilter();
-}
-
-function cityMinPopAtZoom(z) {
-    if (z <= 3) return 812229;
-    if (z <= 4) return 292881;
-    if (z <= 5) return 137491;
-    return 0;
-}
-
-function applyCityFilter() {
-    if (!map.getLayer('cities-layer')) return;
-    map.setFilter('cities-layer', ['>=', ['get', 'pop'], cityMinPopAtZoom(map.getZoom())]);
-}
-
-// ── Nearest-river click selection ─────────────────────────────
-
-function haversineMiles(lat1, lon1, lat2, lon2) {
-    const R    = 3958.8;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a    = Math.sin(dLat / 2) ** 2
-               + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
-               * Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function distanceToRiver(lat, lng, river) {
-    let best = Infinity;
-    for (const seg of river.segments)
-        for (const [plat, plng] of seg) {
-            const d = haversineMiles(lat, lng, plat, plng);
-            if (d < best) best = d;
-        }
-    return best;
-}
-
-function setInfoBar(item) {
-    const bar    = document.getElementById('info-bar');
-    const nameEl = document.getElementById('selected-name');
-    const rankEl = document.getElementById('selected-rank');
-    if (item) {
-        bar.classList.remove('empty');
-        nameEl.textContent = item.river.name;
-        rankEl.textContent = `Rank ${item.scalerank}`;
-    } else {
-        bar.classList.add('empty');
-        nameEl.textContent = 'Tap a river to see its name';
-        rankEl.textContent = '';
-    }
-}
-
-function clearHighlight() {
-    const src = map.getSource('rivers-highlight');
-    if (src) src.setData(EMPTY_FC);
-    setInfoBar(null);
-}
-
-function highlightRiver(item) {
-    map.getSource('rivers-highlight').setData({
-        type: 'FeatureCollection',
-        features: item.river.segments.map(seg => ({
-            type: 'Feature',
-            properties: { scalerank: item.scalerank },
-            geometry: {
-                type: 'LineString',
-                coordinates: seg.map(([lat, lng]) => [lng, lat])
-            }
-        }))
+    // ── Map ───────────────────────────────────────────────────
+    const map = new maplibregl.Map({
+        container: 'map',
+        style:     initialStyle,
+        center:    REGIONS.eu.center,
+        zoom:      REGIONS.eu.zoom,
+        minZoom:   1.2,
+        maxZoom:   9
     });
-}
 
-map.on('click', e => {
-    // City popup takes priority
-    if (citiesVisible) {
-        const hits = map.queryRenderedFeatures(e.point, { layers: ['cities-layer'] });
-        if (hits.length) {
-            const { name, pop } = hits[0].properties;
-            new maplibregl.Popup({ closeButton: true, offset: 10 })
-                .setLngLat(hits[0].geometry.coordinates)
-                .setHTML(`<div class="city-name">${name}</div><div class="city-pop">Pop. ${formatPop(pop)}</div>`)
-                .addTo(map);
-            return;
+    map.addControl(
+        new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }),
+        'top-right'
+    );
+
+    // ── Custom river / city layers ────────────────────────────
+
+    function addCustomSources() {
+        if (!map.getSource('rivers'))
+            map.addSource('rivers',           { type: 'geojson', data: EMPTY_FC });
+        if (!map.getSource('rivers-highlight'))
+            map.addSource('rivers-highlight', { type: 'geojson', data: EMPTY_FC });
+        if (!map.getSource('cities'))
+            map.addSource('cities',           { type: 'geojson', data: EMPTY_FC });
+    }
+
+    function addCustomLayers() {
+        if (!map.getLayer('rivers-base')) {
+            map.addLayer({
+                id: 'rivers-base', type: 'line', source: 'rivers',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#75A8C8',
+                    'line-width': ['case',
+                        ['<=', ['get', 'scalerank'], 2], 5,
+                        ['<=', ['get', 'scalerank'], 5], 3.5,
+                        2.4
+                    ]
+                }
+            });
+        }
+        if (!map.getLayer('rivers-highlight')) {
+            map.addLayer({
+                id: 'rivers-highlight', type: 'line', source: 'rivers-highlight',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#FFC107',
+                    'line-width': ['case',
+                        ['<=', ['get', 'scalerank'], 2], 6.5,
+                        ['<=', ['get', 'scalerank'], 5], 5,
+                        3.9
+                    ]
+                }
+            });
+        }
+        if (!map.getLayer('cities-layer')) {
+            map.addLayer({
+                id: 'cities-layer', type: 'circle', source: 'cities',
+                layout: { visibility: citiesVisible ? 'visible' : 'none' },
+                paint: {
+                    'circle-color':        '#FF9800',
+                    'circle-opacity':      0.8,
+                    'circle-stroke-color': 'rgba(255,255,255,0.45)',
+                    'circle-stroke-width': 1,
+                    'circle-radius': ['step', ['get', 'pop'],
+                        3, 137491, 5, 292881, 7, 812229, 10, 2000000, 13]
+                }
+            });
         }
     }
 
-    // Find nearest river
-    const { lat, lng } = e.lngLat;
-    const limit        = currentMaxRank();
-    let nearest = null, best = Infinity;
-    for (const item of allRivers) {
-        if (item.scalerank > limit) continue;
-        const d = distanceToRiver(lat, lng, item.river);
-        if (d < best) { best = d; nearest = item; }
-    }
-    clearHighlight();
-    if (!nearest || best > 75) return;
-    highlightRiver(nearest);
-    setInfoBar(nearest);
-});
-
-map.on('mouseenter', 'cities-layer', () => { map.getCanvas().style.cursor = 'pointer';   });
-map.on('mouseleave', 'cities-layer', () => { map.getCanvas().style.cursor = '';           });
-map.on('mouseenter', 'rivers-base',  () => { map.getCanvas().style.cursor = 'crosshair'; });
-map.on('mouseleave', 'rivers-base',  () => { map.getCanvas().style.cursor = '';           });
-map.on('zoomend', applyFilter);
-
-// ── Data loading ──────────────────────────────────────────────
-
-function loadRegion(key) {
-    currentRegion = key;
-    allRivers     = [];
-    savedRiverFC  = EMPTY_FC;
-    clearHighlight();
-    if (map.getSource('rivers')) map.getSource('rivers').setData(EMPTY_FC);
-    document.getElementById('count-label').textContent = 'Loading…';
-    map.flyTo({ center: REGIONS[key].center, zoom: REGIONS[key].zoom, duration: 1400 });
-
-    // Reset city state for new region
-    citiesLoaded  = false;
-    savedCityFC   = EMPTY_FC;
-    citiesVisible = false;
-    const citiesBtn = document.getElementById('cities-btn');
-    citiesBtn.classList.remove('active');
-    citiesBtn.textContent = 'Show';
-    if (map.getLayer('cities-layer')) {
-        map.setLayoutProperty('cities-layer', 'visibility', 'none');
-        map.getSource('cities').setData(EMPTY_FC);
+    function restoreData() {
+        if (savedRiverFC.features.length > 0) {
+            map.getSource('rivers').setData(savedRiverFC);
+            applyFilter();
+        }
+        if (citiesLoaded && savedCityFC.features.length > 0) {
+            map.getSource('cities').setData(savedCityFC);
+            if (citiesVisible) applyCityFilter();
+        }
     }
 
-    fetch(DATA_BASE + REGIONS[key].file)
-        .then(r => { if (!r.ok) throw r.status; return r.json(); })
-        .then(rivers => {
-            allRivers    = rivers.map(r => ({ river: r, scalerank: r.scalerank }));
-            savedRiverFC = {
-                type: 'FeatureCollection',
-                features: rivers.flatMap(r =>
-                    r.segments.map(seg => ({
-                        type: 'Feature',
-                        properties: { name: r.name, scalerank: r.scalerank },
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: seg.map(([lat, lng]) => [lng, lat])
-                        }
-                    }))
-                )
-            };
-            if (map.getSource('rivers')) {
-                map.getSource('rivers').setData(savedRiverFC);
-                applyFilter();
-            }
-        })
-        .catch(err => {
-            document.getElementById('count-label').textContent = 'Error loading river data';
-            console.error('River load failed:', err);
-        });
-}
-
-// ── Control callbacks ─────────────────────────────────────────
-
-window.switchRegion = function(btn) {
-    document.querySelectorAll('#region-switch .btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    loadRegion(btn.dataset.region);
-};
-
-window.setFilter = function(btn) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    applyFilter();
-};
-
-window.switchStyle = function(btn) {
-    document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('loading-badge').classList.add('show');
-
-    map.setStyle(OHM_STYLES[btn.dataset.style]);
-    // styledata fires once the new style JSON is applied; safe to add layers then
-    map.once('styledata', onStyleReady);
-};
-
-window.onYearSlider = function(val) {
-    currentDate = String(val);
-    document.getElementById('year-display').textContent = val;
-    // Debounce the actual OHM layer filter — updating on every slider tick is expensive
-    clearTimeout(dateTimer);
-    dateTimer = setTimeout(() => {
+    function onStyleReady() {
+        try { map.setProjection({ type: 'globe' }); } catch (_) {}
+        addCustomSources();
+        addCustomLayers();
+        restoreData();
         if (typeof map.filterByDate === 'function') map.filterByDate(currentDate);
-    }, 250);
-};
-
-window.toggleCities = function(btn) {
-    citiesVisible = !citiesVisible;
-    btn.classList.toggle('active', citiesVisible);
-    btn.textContent = citiesVisible ? 'Hide' : 'Show';
-    if (map.getLayer('cities-layer'))
-        map.setLayoutProperty('cities-layer', 'visibility', citiesVisible ? 'visible' : 'none');
-
-    if (citiesVisible && !citiesLoaded) {
-        citiesLoaded = true;
-        fetch(DATA_BASE + REGIONS[currentRegion].cityFile)
-            .then(r => { if (!r.ok) throw r.status; return r.json(); })
-            .then(cities => {
-                savedCityFC = {
-                    type: 'FeatureCollection',
-                    features: cities.map(c => ({
-                        type: 'Feature',
-                        properties: { name: c.name, pop: c.pop },
-                        geometry: { type: 'Point', coordinates: [c.lng, c.lat] }
-                    }))
-                };
-                map.getSource('cities').setData(savedCityFC);
-                applyCityFilter();
-            })
-            .catch(() => { citiesLoaded = false; });
+        document.getElementById('loading-badge').classList.remove('show');
     }
-};
 
-function formatPop(n) {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M';
-    if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'k';
-    return String(n);
-}
+    map.on('load', () => {
+        onStyleReady();
+        loadRegion('eu');
+    });
+
+    // ── River filtering ───────────────────────────────────────
+
+    function rankAllowedAtZoom(z) {
+        if (z <= 3) return 4;
+        if (z <= 4) return 6;
+        if (z <= 5) return 8;
+        if (z <= 6) return 10;
+        return 99;
+    }
+
+    function currentMaxRank() {
+        const userMax = parseFloat(document.querySelector('.filter-btn.active').dataset.maxRank);
+        return Math.min(userMax, rankAllowedAtZoom(map.getZoom()));
+    }
+
+    function applyFilter() {
+        if (!map.getLayer('rivers-base')) return;
+        const limit = currentMaxRank();
+        map.setFilter('rivers-base', ['<=', ['get', 'scalerank'], limit]);
+        const visible = allRivers.filter(r => r.scalerank <= limit).length;
+        document.getElementById('count-label').textContent = `${visible} rivers`;
+        clearHighlight();
+        applyCityFilter();
+    }
+
+    function cityMinPopAtZoom(z) {
+        if (z <= 3) return 812229;
+        if (z <= 4) return 292881;
+        if (z <= 5) return 137491;
+        return 0;
+    }
+
+    function applyCityFilter() {
+        if (!map.getLayer('cities-layer')) return;
+        map.setFilter('cities-layer', ['>=', ['get', 'pop'], cityMinPopAtZoom(map.getZoom())]);
+    }
+
+    // ── Nearest-river click selection ─────────────────────────
+
+    function haversineMiles(lat1, lon1, lat2, lon2) {
+        const R    = 3958.8;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a    = Math.sin(dLat / 2) ** 2
+                   + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+                   * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function distanceToRiver(lat, lng, river) {
+        let best = Infinity;
+        for (const seg of river.segments)
+            for (const [plat, plng] of seg) {
+                const d = haversineMiles(lat, lng, plat, plng);
+                if (d < best) best = d;
+            }
+        return best;
+    }
+
+    function setInfoBar(item) {
+        const bar    = document.getElementById('info-bar');
+        const nameEl = document.getElementById('selected-name');
+        const rankEl = document.getElementById('selected-rank');
+        if (item) {
+            bar.classList.remove('empty');
+            nameEl.textContent = item.river.name;
+            rankEl.textContent = `Rank ${item.scalerank}`;
+        } else {
+            bar.classList.add('empty');
+            nameEl.textContent = 'Tap a river to see its name';
+            rankEl.textContent = '';
+        }
+    }
+
+    function clearHighlight() {
+        const src = map.getSource('rivers-highlight');
+        if (src) src.setData(EMPTY_FC);
+        setInfoBar(null);
+    }
+
+    function highlightRiver(item) {
+        map.getSource('rivers-highlight').setData({
+            type: 'FeatureCollection',
+            features: item.river.segments.map(seg => ({
+                type: 'Feature',
+                properties: { scalerank: item.scalerank },
+                geometry: { type: 'LineString', coordinates: seg.map(([lat, lng]) => [lng, lat]) }
+            }))
+        });
+    }
+
+    map.on('click', e => {
+        if (citiesVisible) {
+            const hits = map.queryRenderedFeatures(e.point, { layers: ['cities-layer'] });
+            if (hits.length) {
+                const { name, pop } = hits[0].properties;
+                new maplibregl.Popup({ closeButton: true, offset: 10 })
+                    .setLngLat(hits[0].geometry.coordinates)
+                    .setHTML(`<div class="city-name">${name}</div><div class="city-pop">Pop. ${formatPop(pop)}</div>`)
+                    .addTo(map);
+                return;
+            }
+        }
+        const { lat, lng } = e.lngLat;
+        const limit        = currentMaxRank();
+        let nearest = null, best = Infinity;
+        for (const item of allRivers) {
+            if (item.scalerank > limit) continue;
+            const d = distanceToRiver(lat, lng, item.river);
+            if (d < best) { best = d; nearest = item; }
+        }
+        clearHighlight();
+        if (!nearest || best > 75) return;
+        highlightRiver(nearest);
+        setInfoBar(nearest);
+    });
+
+    map.on('mouseenter', 'cities-layer', () => { map.getCanvas().style.cursor = 'pointer';   });
+    map.on('mouseleave', 'cities-layer', () => { map.getCanvas().style.cursor = '';           });
+    map.on('mouseenter', 'rivers-base',  () => { map.getCanvas().style.cursor = 'crosshair'; });
+    map.on('mouseleave', 'rivers-base',  () => { map.getCanvas().style.cursor = '';           });
+    map.on('zoomend', applyFilter);
+
+    // ── Data loading ──────────────────────────────────────────
+
+    function loadRegion(key) {
+        currentRegion = key;
+        allRivers     = [];
+        savedRiverFC  = EMPTY_FC;
+        clearHighlight();
+        if (map.getSource('rivers')) map.getSource('rivers').setData(EMPTY_FC);
+        document.getElementById('count-label').textContent = 'Loading…';
+        map.flyTo({ center: REGIONS[key].center, zoom: REGIONS[key].zoom, duration: 1400 });
+
+        citiesLoaded  = false;
+        savedCityFC   = EMPTY_FC;
+        citiesVisible = false;
+        const citiesBtn = document.getElementById('cities-btn');
+        citiesBtn.classList.remove('active');
+        citiesBtn.textContent = 'Show';
+        if (map.getLayer('cities-layer')) {
+            map.setLayoutProperty('cities-layer', 'visibility', 'none');
+            map.getSource('cities').setData(EMPTY_FC);
+        }
+
+        fetch(DATA_BASE + REGIONS[key].file)
+            .then(r => { if (!r.ok) throw r.status; return r.json(); })
+            .then(rivers => {
+                allRivers    = rivers.map(r => ({ river: r, scalerank: r.scalerank }));
+                savedRiverFC = {
+                    type: 'FeatureCollection',
+                    features: rivers.flatMap(r =>
+                        r.segments.map(seg => ({
+                            type: 'Feature',
+                            properties: { name: r.name, scalerank: r.scalerank },
+                            geometry: {
+                                type: 'LineString',
+                                coordinates: seg.map(([lat, lng]) => [lng, lat])
+                            }
+                        }))
+                    )
+                };
+                if (map.getSource('rivers')) {
+                    map.getSource('rivers').setData(savedRiverFC);
+                    applyFilter();
+                }
+            })
+            .catch(err => {
+                document.getElementById('count-label').textContent = 'Error loading river data';
+                console.error('River load failed:', err);
+            });
+    }
+
+    // ── Control callbacks (exposed to window for onclick attrs) ──
+
+    window.switchRegion = function(btn) {
+        document.querySelectorAll('#region-switch .btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadRegion(btn.dataset.region);
+    };
+
+    window.setFilter = function(btn) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyFilter();
+    };
+
+    window.switchStyle = async function(btn) {
+        document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('loading-badge').classList.add('show');
+        try {
+            const style = await fetchStyle(btn.dataset.style);
+            map.setStyle(style);
+            map.once('styledata', onStyleReady);
+        } catch (err) {
+            console.error('Style switch failed:', err);
+            document.getElementById('loading-badge').classList.remove('show');
+        }
+    };
+
+    window.onYearSlider = function(val) {
+        currentDate = String(val);
+        document.getElementById('year-display').textContent = val;
+        clearTimeout(dateTimer);
+        dateTimer = setTimeout(() => {
+            if (typeof map.filterByDate === 'function') map.filterByDate(currentDate);
+        }, 250);
+    };
+
+    window.toggleCities = function(btn) {
+        citiesVisible = !citiesVisible;
+        btn.classList.toggle('active', citiesVisible);
+        btn.textContent = citiesVisible ? 'Hide' : 'Show';
+        if (map.getLayer('cities-layer'))
+            map.setLayoutProperty('cities-layer', 'visibility', citiesVisible ? 'visible' : 'none');
+
+        if (citiesVisible && !citiesLoaded) {
+            citiesLoaded = true;
+            fetch(DATA_BASE + REGIONS[currentRegion].cityFile)
+                .then(r => { if (!r.ok) throw r.status; return r.json(); })
+                .then(cities => {
+                    savedCityFC = {
+                        type: 'FeatureCollection',
+                        features: cities.map(c => ({
+                            type: 'Feature',
+                            properties: { name: c.name, pop: c.pop },
+                            geometry: { type: 'Point', coordinates: [c.lng, c.lat] }
+                        }))
+                    };
+                    map.getSource('cities').setData(savedCityFC);
+                    applyCityFilter();
+                })
+                .catch(() => { citiesLoaded = false; });
+        }
+    };
+
+    function formatPop(n) {
+        if (n >= 1_000_000) return (n / 1_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+        if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'k';
+        return String(n);
+    }
+
+})().catch(err => {
+    console.error('App init failed:', err);
+    document.getElementById('loading-badge').textContent = 'Failed to load map style';
+    document.getElementById('loading-badge').classList.add('show');
+});
 
 </script>
 </body>
