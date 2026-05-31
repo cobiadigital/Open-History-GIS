@@ -250,8 +250,8 @@
         <div class="ctrl-group">
             <div class="ctrl-label">Region</div>
             <div class="btn-row" id="region-switch">
-                <button class="btn active" data-region="na" onclick="switchRegion(this)">N. America</button>
-                <button class="btn"        data-region="eu" onclick="switchRegion(this)">Europe</button>
+                <button class="btn"        data-region="na" onclick="switchRegion(this)">N. America</button>
+                <button class="btn active" data-region="eu" onclick="switchRegion(this)">Europe</button>
                 <button class="btn"        data-region="sa" onclick="switchRegion(this)">S. America</button>
                 <button class="btn"        data-region="af" onclick="switchRegion(this)">Africa</button>
                 <button class="btn"        data-region="as" onclick="switchRegion(this)">Asia</button>
@@ -327,7 +327,7 @@ const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
 // ── App state ────────────────────────────────────────────────
 
-let currentRegion = 'na';
+let currentRegion = 'eu';
 let currentDate   = '1850';
 let allRivers     = [];
 let savedRiverFC  = EMPTY_FC;   // persists across style switches
@@ -358,8 +358,8 @@ document.getElementById('header-toggle')
 const map = new maplibregl.Map({
     container: 'map',
     style:     OHM_STYLES.main,
-    center:    REGIONS.na.center,
-    zoom:      REGIONS.na.zoom,
+    center:    REGIONS.eu.center,
+    zoom:      REGIONS.eu.zoom,
     minZoom:   1.2,
     maxZoom:   9
 });
@@ -465,7 +465,7 @@ function onStyleReady() {
 
 map.on('load', () => {
     onStyleReady();
-    loadRegion('na');
+    loadRegion('eu');
 });
 
 // ── River filtering ───────────────────────────────────────────
