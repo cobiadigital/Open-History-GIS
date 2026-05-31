@@ -206,6 +206,37 @@
         }
         .city-name { font-weight: 600; margin-bottom: 2px; }
         .city-pop  { color: #90afc0; font-size: 12px; }
+
+        /* ── Dataset popups ───────────────────────────────────────── */
+        .ds-popup { max-width: 260px; }
+        .ds-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+        .ds-order { font-size: 11px; color: #7a9ab0; }
+        .ds-city { font-size: 15px; font-weight: 700; color: #e0e8f0; }
+        .ds-badge {
+            display: inline-block;
+            background: #c9a84c;
+            color: #0a1d2c;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .ds-loc  { font-size: 12px; color: #90afc0; margin-bottom: 2px; }
+        .ds-date { font-size: 12px; color: #b0c8dc; font-style: italic; margin-bottom: 5px; }
+        .ds-type {
+            display: inline-block;
+            font-size: 10px;
+            color: #7a9ab0;
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            text-transform: capitalize;
+        }
+        .ds-notes { font-size: 12px; color: #c0d0e0; line-height: 1.45; }
     </style>
 </head>
 <body>
@@ -275,6 +306,17 @@
             <button class="btn" id="cities-btn" onclick="toggleCities(this)">Show</button>
         </div>
 
+        <!-- Datasets -->
+        <div class="ctrl-group">
+            <div class="ctrl-label">Datasets</div>
+            <div class="btn-row" id="dataset-btns">
+                <button class="btn dataset-btn" data-dataset="antoinette"
+                        onclick="toggleDataset(this)" title="Marie Antoinette's journey Vienna → Versailles, Apr–May 1770">
+                    M. Antoinette 1770
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -303,7 +345,8 @@
 
 // ── Constants ────────────────────────────────────────────────
 
-const DATA_BASE = 'https://raw.githubusercontent.com/cobiadigital/night_time_geoguesser/main/';
+const DATA_BASE   = 'https://raw.githubusercontent.com/cobiadigital/night_time_geoguesser/main/';
+const DATASET_DIR = 'data/'; // local data/ folder served alongside index.html
 
 // Raw GitHub URLs for OHM style JSON files (GitHub Pages returns 404; raw.githubusercontent.com works)
 const OHM_RAW = {
@@ -326,6 +369,104 @@ async function fetchStyle(key) {
     if (style.glyphs) style.glyphs = style.glyphs.replace(GH_PAGES_BASE, RAW_BASE);
     return style;
 }
+
+// ── Dataset registry ──────────────────────────────────────────
+// Each entry defines how to load, render, and describe a dataset.
+// Add new datasets here; the toggle/restore plumbing is generic.
+
+const DATASETS = {
+    antoinette: {
+        label: "Marie Antoinette's Journey 1770",
+        file:  'antoinette_1770.json',
+
+        // Build GeoJSON sources from the raw stops array
+        buildSources(stops) {
+            const habsburg = stops.filter(s => s.order <= 28);
+            const france   = stops.filter(s => s.order >= 28); // stop 28 (Kehl) in both
+            const coord    = s => [s.lng, s.lat];
+            return {
+                'ds-antoinette-route-h': {
+                    type: 'geojson',
+                    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: habsburg.map(coord) } }
+                },
+                'ds-antoinette-route-f': {
+                    type: 'geojson',
+                    data: { type: 'Feature', geometry: { type: 'LineString', coordinates: france.map(coord) } }
+                },
+                'ds-antoinette-stops': {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: stops.map(s => ({
+                            type: 'Feature',
+                            properties: s,
+                            geometry: { type: 'Point', coordinates: [s.lng, s.lat] }
+                        }))
+                    }
+                }
+            };
+        },
+
+        // MapLibre layer specs (visibility set separately)
+        buildLayers() {
+            return [
+                {
+                    id: 'ds-antoinette-route-h', type: 'line',
+                    source: 'ds-antoinette-route-h',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': '#a01818', 'line-width': 2.5, 'line-dasharray': [4, 2.5] }
+                },
+                {
+                    id: 'ds-antoinette-route-f', type: 'line',
+                    source: 'ds-antoinette-route-f',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: { 'line-color': '#1a3a8b', 'line-width': 2.5, 'line-dasharray': [4, 2.5] }
+                },
+                {
+                    id: 'ds-antoinette-stops', type: 'circle',
+                    source: 'ds-antoinette-stops',
+                    paint: {
+                        'circle-radius': ['case',
+                            ['==', ['get', 'type'], 'ceremony'], 9,
+                            ['==', ['get', 'type'], 'arrival'],  9,
+                            ['==', ['get', 'type'], 'departure'], 7,
+                            6
+                        ],
+                        'circle-color': ['case',
+                            ['<=', ['get', 'order'], 27], '#c03030',
+                            ['==', ['get', 'order'], 28], '#c9a84c',
+                            '#2a50b8'
+                        ],
+                        'circle-stroke-color': '#ffffff',
+                        'circle-stroke-width': 1.5,
+                        'circle-opacity': 0.92
+                    }
+                }
+            ];
+        },
+
+        // Clickable layer ids for popup handling
+        clickLayers: ['ds-antoinette-stops'],
+
+        // Popup HTML from a stop's properties
+        popup(p) {
+            return `<div class="ds-popup">
+                <div class="ds-header">
+                    <span class="ds-order">${p.order}.</span>
+                    <span class="ds-city">${p.city}</span>
+                </div>
+                ${p.badge ? `<div class="ds-badge">${p.badge}</div>` : ''}
+                <div class="ds-loc">${p.loc}</div>
+                <div class="ds-date">${p.date} &nbsp;·&nbsp; Day ${p.day}</div>
+                <div class="ds-type">${p.type}</div>
+                <div class="ds-notes">${p.notes}</div>
+            </div>`;
+        }
+    }
+};
+
+// Runtime state per dataset: { data, visible }
+const datasetState = {};
 
 const REGIONS = {
     na: { center: [-98.58,  39.83], zoom: 3,   file: 'na_rivers.json', cityFile: 'na_cities.json' },
@@ -461,6 +602,7 @@ document.getElementById('loading-badge').classList.add('show');
         addCustomSources();
         addCustomLayers();
         restoreData();
+        restoreDatasets();
         if (typeof map.filterByDate === 'function') map.filterByDate(currentDate);
         document.getElementById('loading-badge').classList.remove('show');
     }
@@ -562,6 +704,24 @@ document.getElementById('loading-badge').classList.add('show');
     }
 
     map.on('click', e => {
+        // Dataset stop clicks (highest priority)
+        for (const [key, def] of Object.entries(DATASETS)) {
+            const state = datasetState[key];
+            if (!state || !state.visible) continue;
+            const activeLayers = def.clickLayers.filter(id => map.getLayer(id));
+            if (!activeLayers.length) continue;
+            const hits = map.queryRenderedFeatures(e.point, { layers: activeLayers });
+            if (hits.length) {
+                const props = hits[0].properties;
+                new maplibregl.Popup({ closeButton: true, offset: 10, maxWidth: '300px' })
+                    .setLngLat(hits[0].geometry.coordinates)
+                    .setHTML(def.popup(props))
+                    .addTo(map);
+                return;
+            }
+        }
+
+        // City clicks
         if (citiesVisible) {
             const hits = map.queryRenderedFeatures(e.point, { layers: ['cities-layer'] });
             if (hits.length) {
@@ -573,6 +733,8 @@ document.getElementById('loading-badge').classList.add('show');
                 return;
             }
         }
+
+        // River selection
         const { lat, lng } = e.lngLat;
         const limit        = currentMaxRank();
         let nearest = null, best = Infinity;
@@ -712,6 +874,73 @@ document.getElementById('loading-badge').classList.add('show');
         if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'k';
         return String(n);
     }
+
+    // ── Dataset layer management ──────────────────────────────
+
+    function applyDatasetLayers(key) {
+        const def   = DATASETS[key];
+        const state = datasetState[key];
+        if (!state.data) return;
+
+        // Upsert sources
+        for (const [id, spec] of Object.entries(def.buildSources(state.data))) {
+            if (map.getSource(id)) map.getSource(id).setData(spec.data);
+            else                   map.addSource(id, spec);
+        }
+
+        // Upsert layers
+        for (const layerSpec of def.buildLayers()) {
+            if (!map.getLayer(layerSpec.id)) map.addLayer(layerSpec);
+            map.setLayoutProperty(layerSpec.id, 'visibility', state.visible ? 'visible' : 'none');
+        }
+
+        // Pointer cursor on hover
+        for (const lid of def.clickLayers) {
+            if (!map.getLayer(lid)) continue;
+            map.on('mouseenter', lid, () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', lid, () => { map.getCanvas().style.cursor = '';        });
+        }
+    }
+
+    function restoreDatasets() {
+        for (const key of Object.keys(datasetState)) {
+            if (datasetState[key].data) applyDatasetLayers(key);
+        }
+    }
+
+    window.toggleDataset = async function(btn) {
+        const key   = btn.dataset.dataset;
+        const state = datasetState[key] || (datasetState[key] = { data: null, visible: false });
+
+        state.visible = !state.visible;
+        btn.classList.toggle('active', state.visible);
+
+        if (state.visible && !state.data) {
+            btn.textContent = 'Loading…';
+            btn.disabled    = true;
+            try {
+                const res    = await fetch(DATASET_DIR + DATASETS[key].file);
+                if (!res.ok) throw new Error(res.status);
+                state.data   = await res.json();
+            } catch (err) {
+                console.error('Dataset load failed:', err);
+                state.visible   = false;
+                btn.classList.remove('active');
+                btn.textContent = DATASETS[key].label || key;
+                btn.disabled    = false;
+                return;
+            }
+            btn.textContent = btn.dataset.label || btn.textContent;
+            btn.disabled    = false;
+        }
+
+        applyDatasetLayers(key);
+    };
+
+    // Restore button labels after async load
+    document.querySelectorAll('.dataset-btn').forEach(btn => {
+        btn.dataset.label = btn.textContent;
+    });
 
 })().catch(err => {
     console.error('App init failed:', err);
