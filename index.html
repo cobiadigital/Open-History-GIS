@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Historical River Explorer</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0a1d2c;
+            color: #e0e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #map { position: absolute; inset: 0; }
+
+        /* ── Header panel ── */
+        #header {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            background: rgba(10, 29, 44, 0.93);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+        #header:not(.expanded) .header-body { display: none; }
+
+        .header-bar {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            gap: 8px;
+            min-height: 42px;
+        }
+        #header-toggle {
+            background: none;
+            border: none;
+            color: #7a9ab0;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 2px 6px;
+            line-height: 1;
+        }
+        #header-toggle:hover { color: #c0d8f0; }
+        h1 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e8f0;
+            flex: 1;
+            letter-spacing: 0.02em;
+        }
+        #count-label {
+            font-size: 12px;
+            color: #5a8aa0;
+            white-space: nowrap;
+        }
+
+        .header-body {
+            padding: 6px 12px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .ctrl-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .ctrl-label {
+            font-size: 10px;
+            color: #5a8aa0;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #b0c8dc;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .btn:hover { background: rgba(255, 255, 255, 0.13); }
+        .btn.active {
+            background: #1a4a6a;
+            border-color: #3a7a9a;
+            color: #7dd4ff;
+        }
+
+        /* Historical layer controls */
+        .ohm-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .opacity-wrap { display: flex; align-items: center; gap: 5px; }
+        .opacity-wrap span { font-size: 11px; color: #5a8aa0; }
+        #ohm-opacity {
+            width: 90px;
+            accent-color: #3a9acc;
+            cursor: pointer;
+        }
+
+        /* ── Info bar ── */
+        #info-bar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(10, 29, 44, 0.93);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 16px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 44px;
+        }
+        #info-bar .river-icon {
+            width: 28px;
+            height: 4px;
+            background: #FFC107;
+            border-radius: 2px;
+            flex-shrink: 0;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #info-bar:not(.empty) .river-icon { opacity: 1; }
+        #selected-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #e0e8f0;
+            transition: color 0.2s;
+        }
+        #info-bar.empty #selected-name {
+            color: #3a6a80;
+            font-style: italic;
+            font-weight: 400;
+        }
+        #selected-rank {
+            margin-left: auto;
+            font-size: 11px;
+            color: #5a8aa0;
+        }
+
+        /* ── Legend ── */
+        #legend {
+            position: absolute;
+            bottom: 54px;
+            right: 10px;
+            background: rgba(10, 29, 44, 0.88);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px 10px;
+            z-index: 10;
+            font-size: 11px;
+        }
+        .legend-title { color: #5a8aa0; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+        .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: #90afc0; }
+        .legend-line {
+            height: 3px;
+            border-radius: 2px;
+            background: #75A8C8;
+            flex-shrink: 0;
+        }
+
+        /* MapLibre overrides */
+        .maplibregl-ctrl-attrib { font-size: 10px; }
+        .maplibregl-popup-content {
+            background: rgba(10, 29, 44, 0.95);
+            color: #e0e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 13px;
+        }
+        .maplibregl-popup-tip { border-top-color: rgba(10, 29, 44, 0.95); }
+        .city-name { font-weight: 600; margin-bottom: 2px; }
+        .city-pop { color: #90afc0; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- ── Control panel ── -->
+<div id="header" class="expanded">
+    <div class="header-bar">
+        <button id="header-toggle" title="Toggle controls">☰</button>
+        <h1>Historical River Explorer</h1>
+        <span id="count-label"></span>
+    </div>
+    <div class="header-body">
+
+        <div class="ctrl-group">
+            <div class="ctrl-label">Region</div>
+            <div class="btn-row" id="region-switch">
+                <button class="btn active" data-region="na" onclick="switchRegion(this)">N. America</button>
+                <button class="btn" data-region="eu" onclick="switchRegion(this)">Europe</button>
+                <button class="btn" data-region="sa" onclick="switchRegion(this)">S. America</button>
+                <button class="btn" data-region="af" onclick="switchRegion(this)">Africa</button>
+                <button class="btn" data-region="as" onclick="switchRegion(this)">Asia</button>
+                <button class="btn" data-region="oc" onclick="switchRegion(this)">Oceania</button>
+            </div>
+        </div>
+
+        <div class="ctrl-group">
+            <div class="ctrl-label">River Detail</div>
+            <div class="btn-row">
+                <button class="btn filter-btn active" data-max-rank="3" onclick="setFilter(this)">Major</button>
+                <button class="btn filter-btn" data-max-rank="6" onclick="setFilter(this)">+Secondary</button>
+                <button class="btn filter-btn" data-max-rank="99" onclick="setFilter(this)">All</button>
+            </div>
+        </div>
+
+        <div class="ctrl-group">
+            <div class="ctrl-label">Historical Map Overlay</div>
+            <div class="ohm-row">
+                <button class="btn active" id="ohm-toggle" onclick="toggleOHM(this)">On</button>
+                <div class="opacity-wrap">
+                    <span>Opacity</span>
+                    <input type="range" id="ohm-opacity" min="0" max="100" value="55"
+                           oninput="setOHMOpacity(this.value)" title="Historical layer opacity">
+                </div>
+            </div>
+        </div>
+
+        <div class="ctrl-group">
+            <div class="ctrl-label">Cities</div>
+            <button class="btn" id="cities-btn" onclick="toggleCities(this)">Show</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Info bar ── -->
+<div id="info-bar" class="empty">
+    <div class="river-icon"></div>
+    <div id="selected-name">Tap a river to see its name</div>
+    <div id="selected-rank"></div>
+</div>
+
+<!-- ── Legend ── -->
+<div id="legend">
+    <div class="legend-title">Rivers</div>
+    <div class="legend-row"><div class="legend-line" style="width:20px;height:5px"></div> Major (rank 0–2)</div>
+    <div class="legend-row"><div class="legend-line" style="width:16px;height:3.5px"></div> Secondary (3–5)</div>
+    <div class="legend-row"><div class="legend-line" style="width:12px;height:2.5px"></div> Tributary (6+)</div>
+    <div class="legend-row" style="margin-top:4px">
+        <div class="legend-line" style="width:20px;height:5px;background:#FFC107"></div> Selected
+    </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<script>
+
+// River data sourced from the night_time_geoguesser project
+const DATA_BASE = 'https://raw.githubusercontent.com/cobiadigital/night_time_geoguesser/main/';
+
+const REGIONS = {
+    na: { center: [-98.58, 39.83],  zoom: 3,   file: 'na_rivers.json', cityFile: 'na_cities.json', label: 'North American' },
+    eu: { center: [15.0,   54.0],   zoom: 3,   file: 'eu_rivers.json', cityFile: 'eu_cities.json', label: 'European'       },
+    sa: { center: [-60.0, -15.0],   zoom: 2.5, file: 'sa_rivers.json', cityFile: 'sa_cities.json', label: 'South American' },
+    af: { center: [20.0,   0.0],    zoom: 2.5, file: 'af_rivers.json', cityFile: 'af_cities.json', label: 'African'        },
+    as: { center: [100.0,  30.0],   zoom: 2.5, file: 'as_rivers.json', cityFile: 'as_cities.json', label: 'Asian'          },
+    oc: { center: [140.0, -25.0],   zoom: 2.5, file: 'oc_rivers.json', cityFile: 'oc_cities.json', label: 'Oceanian'       }
+};
+
+const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+
+let currentRegion = 'na';
+let allRivers = [];
+let citiesLoaded = false;
+let citiesVisible = false;
+let ohmVisible = true;
+
+// ── Panel persistence ──────────────────────────────────────────
+
+function initPanel(id, storageKey, defaultExpanded) {
+    const el = document.getElementById(id);
+    const stored = localStorage.getItem(storageKey);
+    const expanded = stored === null ? defaultExpanded : stored === '1';
+    el.classList.toggle('expanded', expanded);
+}
+
+function togglePanel(id, storageKey) {
+    const el = document.getElementById(id);
+    const expanded = !el.classList.contains('expanded');
+    el.classList.toggle('expanded', expanded);
+    localStorage.setItem(storageKey, expanded ? '1' : '0');
+}
+
+initPanel('header', 'ohgis.header', true);
+document.getElementById('header-toggle').addEventListener('click',
+    () => togglePanel('header', 'ohgis.header'));
+
+// ── Map initialisation ─────────────────────────────────────────
+
+const map = new maplibregl.Map({
+    container: 'map',
+    center: REGIONS.na.center,
+    zoom: REGIONS.na.zoom,
+    minZoom: 1.2,
+    maxZoom: 9,
+    style: {
+        version: 8,
+        projection: { type: 'globe' },
+        glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        sources: {
+            // Physical terrain base
+            esri: {
+                type: 'raster',
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                minzoom: 0,
+                maxzoom: 8,
+                attribution: 'Tiles &copy; Esri &mdash; Source: US National Park Service'
+            },
+            // OpenHistoricalMap overlay
+            ohm: {
+                type: 'raster',
+                tiles: ['https://tile.openhistoricalmap.org/historicalmap/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                minzoom: 0,
+                maxzoom: 18,
+                attribution: '&copy; <a href="https://www.openhistoricalmap.org/">OpenHistoricalMap</a> contributors'
+            },
+            rivers:           { type: 'geojson', data: EMPTY_FC },
+            'rivers-highlight': { type: 'geojson', data: EMPTY_FC },
+            cities:           { type: 'geojson', data: EMPTY_FC }
+        },
+        layers: [
+            // 1. Terrain base
+            { id: 'esri-base', type: 'raster', source: 'esri' },
+
+            // 2. Historical map overlay
+            {
+                id: 'ohm-layer',
+                type: 'raster',
+                source: 'ohm',
+                paint: { 'raster-opacity': 0.55 }
+            },
+
+            // 3. Rivers
+            {
+                id: 'rivers-base',
+                type: 'line',
+                source: 'rivers',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#75A8C8',
+                    'line-width': [
+                        'case',
+                        ['<=', ['get', 'scalerank'], 2], 5,
+                        ['<=', ['get', 'scalerank'], 5], 3.5,
+                        2.4
+                    ]
+                }
+            },
+
+            // 4. Selected river highlight
+            {
+                id: 'rivers-highlight',
+                type: 'line',
+                source: 'rivers-highlight',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: {
+                    'line-color': '#FFC107',
+                    'line-width': [
+                        'case',
+                        ['<=', ['get', 'scalerank'], 2], 6.5,
+                        ['<=', ['get', 'scalerank'], 5], 5,
+                        3.9
+                    ]
+                }
+            },
+
+            // 5. Cities (hidden by default)
+            {
+                id: 'cities-layer',
+                type: 'circle',
+                source: 'cities',
+                layout: { visibility: 'none' },
+                paint: {
+                    'circle-color': '#FF9800',
+                    'circle-opacity': 0.8,
+                    'circle-stroke-color': 'rgba(255,255,255,0.45)',
+                    'circle-stroke-width': 1,
+                    'circle-radius': [
+                        'step', ['get', 'pop'],
+                        3, 137491, 5, 292881, 7, 812229, 10, 2000000, 13
+                    ]
+                }
+            }
+        ]
+    }
+});
+
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true, showCompass: true }), 'top-right');
+
+// ── River filtering ────────────────────────────────────────────
+
+function rankAllowedAtZoom(z) {
+    if (z <= 3) return 4;
+    if (z <= 4) return 6;
+    if (z <= 5) return 8;
+    if (z <= 6) return 10;
+    return 99;
+}
+
+function currentMaxRank() {
+    const userMax = parseFloat(document.querySelector('.filter-btn.active').dataset.maxRank);
+    return Math.min(userMax, rankAllowedAtZoom(map.getZoom()));
+}
+
+function applyFilter() {
+    if (!map.getLayer('rivers-base')) return;
+    const limit = currentMaxRank();
+    map.setFilter('rivers-base', ['<=', ['get', 'scalerank'], limit]);
+    const visible = allRivers.filter(r => r.scalerank <= limit).length;
+    document.getElementById('count-label').textContent = `${visible} rivers`;
+    clearHighlight();
+    applyCityFilter();
+}
+
+function cityMinPopAtZoom(z) {
+    if (z <= 3) return 812229;
+    if (z <= 4) return 292881;
+    if (z <= 5) return 137491;
+    return 0;
+}
+
+function applyCityFilter() {
+    if (!map.getLayer('cities-layer')) return;
+    map.setFilter('cities-layer', ['>=', ['get', 'pop'], cityMinPopAtZoom(map.getZoom())]);
+}
+
+// ── Haversine + nearest-river selection ───────────────────────
+
+function haversineMiles(lat1, lon1, lat2, lon2) {
+    const R = 3958.8;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+            * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function distanceToRiver(lat, lng, river) {
+    let best = Infinity;
+    for (const seg of river.segments) {
+        for (const [plat, plng] of seg) {
+            const d = haversineMiles(lat, lng, plat, plng);
+            if (d < best) best = d;
+        }
+    }
+    return best;
+}
+
+const SELECT_MAX_MILES = 75;
+
+function setInfoBar(item) {
+    const bar    = document.getElementById('info-bar');
+    const nameEl = document.getElementById('selected-name');
+    const rankEl = document.getElementById('selected-rank');
+    if (item) {
+        bar.classList.remove('empty');
+        nameEl.textContent = item.river.name;
+        rankEl.textContent = `Rank ${item.scalerank}`;
+    } else {
+        bar.classList.add('empty');
+        nameEl.textContent = 'Tap a river to see its name';
+        rankEl.textContent = '';
+    }
+}
+
+function clearHighlight() {
+    const src = map.getSource('rivers-highlight');
+    if (src) src.setData(EMPTY_FC);
+    setInfoBar(null);
+}
+
+function highlightRiver(item) {
+    const features = item.river.segments.map(seg => ({
+        type: 'Feature',
+        properties: { scalerank: item.scalerank },
+        geometry: {
+            type: 'LineString',
+            coordinates: seg.map(([lat, lng]) => [lng, lat])
+        }
+    }));
+    map.getSource('rivers-highlight').setData({ type: 'FeatureCollection', features });
+}
+
+// ── Click handler ─────────────────────────────────────────────
+
+map.on('click', (e) => {
+    // City click takes priority when cities are visible
+    if (citiesVisible) {
+        const hits = map.queryRenderedFeatures(e.point, { layers: ['cities-layer'] });
+        if (hits.length) {
+            const { name, pop } = hits[0].properties;
+            new maplibregl.Popup({ closeButton: true, offset: 10 })
+                .setLngLat(hits[0].geometry.coordinates)
+                .setHTML(`<div class="city-name">${name}</div><div class="city-pop">Pop. ${formatPop(pop)}</div>`)
+                .addTo(map);
+            return;
+        }
+    }
+
+    const { lat, lng } = e.lngLat;
+    const limit = currentMaxRank();
+    let nearest = null, best = Infinity;
+
+    for (const item of allRivers) {
+        if (item.scalerank > limit) continue;
+        const d = distanceToRiver(lat, lng, item.river);
+        if (d < best) { best = d; nearest = item; }
+    }
+
+    clearHighlight();
+    if (!nearest || best > SELECT_MAX_MILES) return;
+    highlightRiver(nearest);
+    setInfoBar(nearest);
+});
+
+map.on('mouseenter', 'cities-layer',  () => { map.getCanvas().style.cursor = 'pointer';    });
+map.on('mouseleave', 'cities-layer',  () => { map.getCanvas().style.cursor = '';            });
+map.on('mouseenter', 'rivers-base',   () => { map.getCanvas().style.cursor = 'crosshair';  });
+map.on('mouseleave', 'rivers-base',   () => { map.getCanvas().style.cursor = '';            });
+
+// ── Region loading ────────────────────────────────────────────
+
+function loadRegion(key) {
+    currentRegion = key;
+    const region = REGIONS[key];
+
+    allRivers = [];
+    clearHighlight();
+    if (map.getSource('rivers')) map.getSource('rivers').setData(EMPTY_FC);
+    document.getElementById('count-label').textContent = 'Loading…';
+
+    map.flyTo({ center: region.center, zoom: region.zoom, duration: 1400 });
+
+    // Reset city state for new region
+    citiesLoaded = false;
+    citiesVisible = false;
+    const citiesBtn = document.getElementById('cities-btn');
+    citiesBtn.classList.remove('active');
+    citiesBtn.textContent = 'Show';
+    if (map.getLayer('cities-layer')) {
+        map.setLayoutProperty('cities-layer', 'visibility', 'none');
+        map.getSource('cities').setData(EMPTY_FC);
+    }
+
+    fetch(DATA_BASE + region.file)
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(rivers => {
+            allRivers = rivers.map(river => ({ river, scalerank: river.scalerank }));
+            const features = rivers.flatMap(river =>
+                river.segments.map(seg => ({
+                    type: 'Feature',
+                    properties: { name: river.name, scalerank: river.scalerank },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: seg.map(([lat, lng]) => [lng, lat])
+                    }
+                }))
+            );
+            map.getSource('rivers').setData({ type: 'FeatureCollection', features });
+            applyFilter();
+        })
+        .catch(err => {
+            document.getElementById('count-label').textContent = 'Error loading river data';
+            console.error('River load failed:', err);
+        });
+}
+
+// ── Control callbacks ─────────────────────────────────────────
+
+window.switchRegion = function(btn) {
+    document.querySelectorAll('#region-switch .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadRegion(btn.dataset.region);
+};
+
+window.setFilter = function(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilter();
+};
+
+window.toggleOHM = function(btn) {
+    ohmVisible = !ohmVisible;
+    btn.classList.toggle('active', ohmVisible);
+    btn.textContent = ohmVisible ? 'On' : 'Off';
+    map.setLayoutProperty('ohm-layer', 'visibility', ohmVisible ? 'visible' : 'none');
+};
+
+window.setOHMOpacity = function(val) {
+    map.setPaintProperty('ohm-layer', 'raster-opacity', val / 100);
+};
+
+window.toggleCities = function(btn) {
+    citiesVisible = !citiesVisible;
+    btn.classList.toggle('active', citiesVisible);
+    btn.textContent = citiesVisible ? 'Hide' : 'Show';
+    map.setLayoutProperty('cities-layer', 'visibility', citiesVisible ? 'visible' : 'none');
+
+    if (citiesVisible && !citiesLoaded) {
+        citiesLoaded = true;
+        fetch(DATA_BASE + REGIONS[currentRegion].cityFile)
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(cities => {
+                const features = cities.map(c => ({
+                    type: 'Feature',
+                    properties: { name: c.name, pop: c.pop },
+                    geometry: { type: 'Point', coordinates: [c.lng, c.lat] }
+                }));
+                map.getSource('cities').setData({ type: 'FeatureCollection', features });
+                applyCityFilter();
+            })
+            .catch(() => { citiesLoaded = false; });
+    }
+};
+
+function formatPop(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1_000)     return (n / 1_000).toFixed(0) + 'k';
+    return String(n);
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+
+map.on('zoomend', applyFilter);
+
+map.on('load', () => {
+    loadRegion('na');
+});
+
+</script>
+</body>
+</html>
