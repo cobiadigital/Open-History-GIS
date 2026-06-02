@@ -314,6 +314,10 @@
                         onclick="toggleDataset(this)" title="Marie Antoinette's journey Vienna → Versailles, Apr–May 1770">
                     M. Antoinette 1770
                 </button>
+                <button class="btn dataset-btn" data-dataset="roman_roads"
+                        onclick="toggleDataset(this)" title="Roman roads from the Itinerarium Antonini — 17 named roads across Italy, Gaul, Britain, and the Balkans">
+                    Roman Roads
+                </button>
             </div>
         </div>
 
@@ -460,6 +464,63 @@ const DATASETS = {
                 <div class="ds-date">${p.date} &nbsp;·&nbsp; Day ${p.day}</div>
                 <div class="ds-type">${p.type}</div>
                 <div class="ds-notes">${p.notes}</div>
+            </div>`;
+        }
+    },
+
+    roman_roads: {
+        label: 'Roman Roads (Antonine)',
+        file:  'roman_roads_ia.json',
+
+        buildSources(roads) {
+            return {
+                'ds-roman-roads': {
+                    type: 'geojson',
+                    data: {
+                        type: 'FeatureCollection',
+                        features: roads.map(r => ({
+                            type: 'Feature',
+                            properties: {
+                                id: r.id, name: r.name, also_known_as: r.also_known_as,
+                                region: r.region, built: r.built, builder: r.builder,
+                                length: r.length, ia_ref: r.ia_ref, tier: r.tier,
+                                description: r.description
+                            },
+                            geometry: { type: 'LineString', coordinates: r.coords }
+                        }))
+                    }
+                }
+            };
+        },
+
+        buildLayers() {
+            return [
+                {
+                    id: 'ds-roman-roads', type: 'line',
+                    source: 'ds-roman-roads',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-color': ['case', ['==', ['get', 'tier'], 1], '#c8a84c', '#b8986a'],
+                        'line-width': ['case', ['==', ['get', 'tier'], 1], 2.5, 1.5],
+                        'line-opacity': 0.88
+                    }
+                }
+            ];
+        },
+
+        clickLayers: ['ds-roman-roads'],
+
+        popup(p) {
+            return `<div class="ds-popup">
+                <div class="ds-header">
+                    <span class="ds-city">${p.name}</span>
+                </div>
+                ${p.also_known_as ? `<div class="ds-loc">${p.also_known_as}</div>` : ''}
+                <div class="ds-date">Built: ${p.built}</div>
+                ${p.builder ? `<div class="ds-notes" style="margin-bottom:3px">Builder: ${p.builder}</div>` : ''}
+                <div class="ds-notes" style="margin-bottom:3px">Length: ${p.length} &nbsp;·&nbsp; Region: ${p.region}</div>
+                <div class="ds-type">${p.ia_ref}</div>
+                <div class="ds-notes" style="margin-top:5px">${p.description}</div>
             </div>`;
         }
     }
@@ -713,8 +774,11 @@ document.getElementById('loading-badge').classList.add('show');
             const hits = map.queryRenderedFeatures(e.point, { layers: activeLayers });
             if (hits.length) {
                 const props = hits[0].properties;
+                const popupAt = hits[0].geometry.type === 'Point'
+                    ? hits[0].geometry.coordinates
+                    : [e.lngLat.lng, e.lngLat.lat];
                 new maplibregl.Popup({ closeButton: true, offset: 10, maxWidth: '300px' })
-                    .setLngLat(hits[0].geometry.coordinates)
+                    .setLngLat(popupAt)
                     .setHTML(def.popup(props))
                     .addTo(map);
                 return;

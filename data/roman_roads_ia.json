@@ -1,0 +1,296 @@
+[
+  {
+    "id": "via-appia",
+    "name": "Via Appia",
+    "also_known_as": "Appian Way; Queen of Roads (Regina Viarum)",
+    "region": "Italy",
+    "built": "312 BC",
+    "builder": "Appius Claudius Caecus (censor)",
+    "length": "~540 km Rome to Brindisi",
+    "ia_ref": "Iter I, Iter II (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The oldest paved Roman road and the most strategically important. Built initially from Rome to Capua (212 km), later extended to Brindisi — the primary port for Greece and the East. Paved with fitted basalt blocks still visible today. Lined with tombs; Paul of Tarsus walked its final stretch into Rome.",
+    "coords": [
+      [12.4922, 41.8902], [12.6650, 41.7168], [12.9300, 41.5500],
+      [13.2307, 41.2929], [13.6100, 41.2570], [14.0200, 41.2300],
+      [14.2548, 41.0850], [14.7817, 41.1286], [15.8200, 40.9600],
+      [16.5500, 40.6400], [17.2322, 40.4764], [17.9473, 40.6360]
+    ]
+  },
+  {
+    "id": "via-aurelia",
+    "name": "Via Aurelia",
+    "also_known_as": "Via Julia Augusta (in Liguria and Gaul)",
+    "region": "Italy / Southern Gaul",
+    "built": "241 BC (Rome–Pisa); extended under Augustus",
+    "builder": "Gaius Aurelius Cotta (censor)",
+    "length": "~730 km Rome to Arles",
+    "ia_ref": "Iter VII (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The great coastal highway of Tyrrhenian Italy and the Riviera. Connected Rome to the western provinces via Genoa and the Ligurian coast. The Augustan extension (Via Julia Augusta) ran from Savona to Arles through Ventimiglia, Monaco, and Nice. Critical for troop movements to Hispania and Gaul.",
+    "coords": [
+      [12.4922, 41.8902], [11.7954, 42.0934], [11.1101, 42.7596],
+      [10.4900, 42.9900], [10.4036, 43.7228], [8.9463, 44.4056],
+      [8.3650, 44.4200], [7.6089, 43.7890], [7.2620, 43.7102],
+      [6.7359, 43.4330], [5.9200, 43.3700], [4.6272, 43.6767]
+    ]
+  },
+  {
+    "id": "via-flaminia",
+    "name": "Via Flaminia",
+    "also_known_as": null,
+    "region": "Italy (Central)",
+    "built": "220 BC",
+    "builder": "Gaius Flaminius (censor)",
+    "length": "~313 km Rome to Rimini",
+    "ia_ref": "Iter XI (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The principal road north from Rome through the Apennines, connecting the capital to Cisalpine Gaul. After crossing the Apennines via the Furlo Pass it descended to the Adriatic coast. Junction at Rimini (Ariminum) with the Via Aemilia. The Flaminia was the standard route for armies marching north.",
+    "coords": [
+      [12.4922, 41.8902], [12.5219, 42.5170], [12.7382, 42.7342],
+      [12.7032, 42.9531], [12.7700, 43.3700], [12.8124, 43.6869],
+      [13.0253, 43.8413], [12.5675, 44.0594]
+    ]
+  },
+  {
+    "id": "via-aemilia",
+    "name": "Via Aemilia",
+    "also_known_as": null,
+    "region": "Cisalpine Gaul (Po Valley)",
+    "built": "187 BC",
+    "builder": "Marcus Aemilius Lepidus (consul)",
+    "length": "~270 km Rimini to Piacenza",
+    "ia_ref": "Iter XI, Iter XIV (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "A dead-straight road across the Po plain, giving its name to the modern Emilia-Romagna region. Connected the Adriatic coast to the Po crossing at Piacenza, where it joined roads to Milan and the Alps. Major cities along it — Forlì, Bologna, Modena, Parma — all owe their grid layouts to Roman road-building.",
+    "coords": [
+      [12.5675, 44.0594], [12.2430, 44.1370], [12.0408, 44.2227],
+      [11.7100, 44.3600], [11.3426, 44.4949], [10.9252, 44.6455],
+      [10.3279, 44.8015], [9.6936, 45.0526]
+    ]
+  },
+  {
+    "id": "via-cassia",
+    "name": "Via Cassia",
+    "also_known_as": null,
+    "region": "Italy (Etruria)",
+    "built": "c. 171 BC",
+    "builder": "Attributed to Gaius Cassius Longinus",
+    "length": "~290 km Rome to Lucca",
+    "ia_ref": "Iter XII (Itinerarium Antonini)",
+    "tier": 2,
+    "description": "The principal road through inland Etruria, running north from Rome through Viterbo, Siena, and Florence before meeting the Via Aurelia near the Ligurian coast. A slower but more central alternative to the coastal Via Aurelia. The road is still largely followed by the modern Via Cassia (SS2).",
+    "coords": [
+      [12.4922, 41.8902], [12.1052, 42.4183], [11.7200, 42.8800],
+      [11.3308, 43.3188], [11.2558, 43.7696], [10.9150, 43.9335],
+      [10.4957, 43.8429]
+    ]
+  },
+  {
+    "id": "via-salaria",
+    "name": "Via Salaria",
+    "also_known_as": "Salt Road",
+    "region": "Italy (Central Apennines)",
+    "built": "Pre-Roman; formalised by 3rd c. BC",
+    "builder": "Ancient Sabine salt route, formalised by Rome",
+    "length": "~242 km Rome to the Adriatic",
+    "ia_ref": "Iter XIII (Itinerarium Antonini)",
+    "tier": 2,
+    "description": "One of the oldest roads in Italy, predating Rome itself. Used to transport salt from the saltpans at the Tiber mouth to the inland Sabine and Latin peoples — hence its name. It crossed the Apennines through the Tronto valley to reach the Adriatic coast near modern San Benedetto del Tronto.",
+    "coords": [
+      [12.4922, 41.8902], [12.8597, 42.4047], [13.2200, 42.6200],
+      [13.5765, 42.8535], [13.8876, 42.9498]
+    ]
+  },
+  {
+    "id": "via-latina",
+    "name": "Via Latina",
+    "also_known_as": null,
+    "region": "Italy (Latium / Campania)",
+    "built": "4th century BC",
+    "builder": "Pre-Roman Latin League route, formalised by Rome",
+    "length": "~200 km Rome to Capua",
+    "ia_ref": "Iter VI (Itinerarium Antonini)",
+    "tier": 2,
+    "description": "The inland alternative to the Via Appia for the Rome–Capua journey, running through the Latin and Samnite highlands. Longer but easier to defend in the early Republic. Passed through Ferentino and Cassino. The two roads met at Capua and continued together to Brindisi.",
+    "coords": [
+      [12.4922, 41.8902], [13.2549, 41.6890], [13.5700, 41.5900],
+      [13.8297, 41.4902], [14.0500, 41.3300], [14.2548, 41.0850],
+      [14.7817, 41.1286]
+    ]
+  },
+  {
+    "id": "via-trajana",
+    "name": "Via Trajana",
+    "also_known_as": "Trajan's Road",
+    "region": "Italy (Apulia)",
+    "built": "109 AD",
+    "builder": "Emperor Trajan",
+    "length": "~325 km Benevento to Brindisi",
+    "ia_ref": "Iter I variant (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "Trajan's alternative to the final leg of the Via Appia, following a more northerly coastal route through Apulia. Shorter than the Appia's route via Taranto. Passed through Canosa di Puglia and Bari before reaching Brindisi. Commemorated by the Arch of Trajan at Benevento, carved in 114 AD.",
+    "coords": [
+      [14.7817, 41.1286], [15.5400, 41.1900], [16.0626, 41.2220],
+      [16.5600, 41.1100], [16.8719, 41.1171], [17.3700, 40.9000],
+      [17.9473, 40.6360]
+    ]
+  },
+  {
+    "id": "via-popilia",
+    "name": "Via Popilia",
+    "also_known_as": "Via Popillia; Via Annia (northern branch)",
+    "region": "Italy (Southern)",
+    "built": "132 BC",
+    "builder": "Publius Popillius Laenas (consul)",
+    "length": "~500 km Capua to Rhegium",
+    "ia_ref": "Iter V (Itinerarium Antonini)",
+    "tier": 2,
+    "description": "The main road south from Capua through Calabria to the straits of Messina, opening up the toe of Italy. Popillius himself boasted on milestone inscriptions of having built it 'for the first time' through the territory. From Rhegium it connected by ferry to Sicily.",
+    "coords": [
+      [14.2548, 41.0850], [14.2681, 40.8518], [14.7547, 40.6824],
+      [15.5500, 40.2500], [15.8900, 39.8400], [16.0334, 39.3593],
+      [16.2530, 39.3086], [16.0300, 38.9200], [15.6500, 38.1098]
+    ]
+  },
+  {
+    "id": "via-claudia-augusta",
+    "name": "Via Claudia Augusta",
+    "also_known_as": null,
+    "region": "Italy / Raetia (Alps to Danube)",
+    "built": "46–47 AD (original route by Drusus c. 15 BC)",
+    "builder": "Emperor Claudius (completing Drusus's military road)",
+    "length": "~500 km Altinum to Augsburg",
+    "ia_ref": "Iter XXVII (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The great Alpine highway connecting the Po plain to the Danube frontier. Drusus used an earlier track during the Alpine campaigns of 15 BC; Claudius paved and formalised it. Ran from Altinum near Venice through Trento, over the Reschenscheideck pass, to Augusta Vindelicum (Augsburg). Two surviving milestones name both Drusus and Claudius.",
+    "coords": [
+      [12.3850, 45.5500], [11.8700, 45.6600], [11.1217, 46.0679],
+      [11.3548, 46.4981], [11.1597, 46.6713], [10.8500, 46.8700],
+      [10.5200, 47.0000], [11.4041, 47.2692], [10.8978, 48.3706]
+    ]
+  },
+  {
+    "id": "via-egnatia",
+    "name": "Via Egnatia",
+    "also_known_as": null,
+    "region": "Macedonia / Thrace",
+    "built": "c. 146–120 BC",
+    "builder": "Gnaeus Egnatius (proconsul of Macedonia)",
+    "length": "~1,120 km Dyrrachium to Byzantium",
+    "ia_ref": "Iter VIII, Iter X (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The great eastern highway of the Roman Empire, linking the Adriatic to the Aegean and Thrace. Together with the sea crossing from Brindisi to Durrës, it formed the standard route from Rome to the East. Cicero, Caesar, Augustus, and many others travelled it. The road through Thessaloniki and Kavala is still partially visible.",
+    "coords": [
+      [19.4407, 41.3286], [20.0825, 41.1122], [20.5600, 41.0900],
+      [20.8016, 41.1231], [21.3429, 41.0297], [21.8000, 41.1300],
+      [22.2900, 41.2900], [22.9444, 40.6401], [23.7500, 40.8500],
+      [24.4018, 40.9389], [25.2000, 40.8500], [25.8773, 40.8480],
+      [26.5557, 41.6818], [27.5300, 41.5800], [28.9784, 41.0082]
+    ]
+  },
+  {
+    "id": "via-militaris",
+    "name": "Via Militaris",
+    "also_known_as": "Via Diagonalis; Diagonal Road",
+    "region": "Balkans (Moesia / Thrace)",
+    "built": "1st–2nd century AD (Trajan's Dacian wars era)",
+    "builder": "Roman military engineering corps",
+    "length": "~700 km Singidunum to Constantinople",
+    "ia_ref": "Iter CCXVIII–CCXXII (Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The main military road across the Balkans from the Danube frontier to Constantinople, cutting diagonally through Moesia and Thrace. Essential for moving troops to the Danube limes and later to defend Constantinople. Passed through Naissus (birthplace of Constantine the Great), Serdica (Sofia), and Philippopolis (Plovdiv). Many later roads follow its course.",
+    "coords": [
+      [20.4612, 44.8176], [21.8964, 43.3209], [22.8700, 43.1200],
+      [23.3219, 42.6977], [24.7489, 42.1354], [25.5700, 41.9700],
+      [26.5557, 41.6818], [27.5300, 41.5800], [28.9784, 41.0082]
+    ]
+  },
+  {
+    "id": "via-domitia",
+    "name": "Via Domitia",
+    "also_known_as": null,
+    "region": "Gallia Narbonensis / Hispania Tarraconensis",
+    "built": "121 BC",
+    "builder": "Gnaeus Domitius Ahenobarbus (consul)",
+    "length": "~530 km Rhône to Pyrenees",
+    "ia_ref": "Iter I (Hispania; Itinerarium Antonini)",
+    "tier": 1,
+    "description": "The first Roman road in Gaul, connecting Italy to Spain via the Mediterranean coast. Ran from the Rhône crossing at Beaucaire/Tarascon through Nîmes, Montpellier, and Narbonne to the Pyrenean pass at Le Perthus. The road's construction enabled Roman control over southern Gaul. A surviving milestone from 118 BC near Narbonne is one of the oldest known in Gaul.",
+    "coords": [
+      [4.6272, 43.6767], [4.3601, 43.8367], [3.8767, 43.6109],
+      [3.5100, 43.3600], [3.2150, 43.3449], [3.0030, 43.1842],
+      [2.9000, 43.0700], [2.8954, 42.6976], [2.8568, 42.4651],
+      [2.8211, 41.9794], [2.1734, 41.3851], [1.2541, 41.1189]
+    ]
+  },
+  {
+    "id": "via-aquitania",
+    "name": "Via Aquitania",
+    "also_known_as": null,
+    "region": "Gallia Narbonensis / Aquitania",
+    "built": "c. 118 BC (Narbo colony foundation) and expanded under Augustus",
+    "builder": "Roman colonists and Augustan engineers",
+    "length": "~400 km Narbonne to Atlantic (Burdigala)",
+    "ia_ref": "Iter II (Hispania supplement; Itinerarium Antonini)",
+    "tier": 2,
+    "description": "Connected the Mediterranean port of Narbonne westward through the Carcassonne gap and the Garonne valley to Toulouse and then to Bordeaux (Burdigala) on the Atlantic. This cross-Gaul route was strategically vital for moving troops between the Mediterranean and the Atlantic provinces, avoiding the long coastal route.",
+    "coords": [
+      [3.0030, 43.1842], [2.3500, 43.2100], [1.9200, 43.1700],
+      [1.4437, 43.6047], [0.7800, 43.4800], [0.0739, 44.3597],
+      [-0.5800, 44.8400]
+    ]
+  },
+  {
+    "id": "watling-street",
+    "name": "Watling Street",
+    "also_known_as": "Iter II (Britain; Itinerarium Antonini)",
+    "region": "Britannia",
+    "built": "c. 43–60 AD",
+    "builder": "Aulus Plautius and later Roman legions",
+    "length": "~320 km Dover to Wroxeter",
+    "ia_ref": "Iter II, Iter V (Itinerarium Antonini — Britannia)",
+    "tier": 1,
+    "description": "The primary military road of Roman Britain, running from the invasion landing point at Dubris (Dover) through Londinium (London) all the way to the legionary fortress at Viroconium (Wroxeter). Used by Boudicca's army and later by Roman forces responding to it. The medieval Watling Street and much of the modern A2/A5 follow the same alignment.",
+    "coords": [
+      [1.3090, 51.1279], [1.0785, 51.2802], [0.5000, 51.3900],
+      [-0.0956, 51.5074], [-0.3410, 51.7526], [-0.9893, 52.1314],
+      [-1.7400, 52.4700], [-2.1200, 52.5800], [-2.6508, 52.6741],
+      [-2.8928, 53.1933]
+    ]
+  },
+  {
+    "id": "ermine-street",
+    "name": "Ermine Street",
+    "also_known_as": "Iter VI, Iter VIII (Britain; Itinerarium Antonini)",
+    "region": "Britannia",
+    "built": "c. 45–60 AD",
+    "builder": "Roman legions (IX Hispana)",
+    "length": "~290 km London to York",
+    "ia_ref": "Iter VI, Iter VIII (Itinerarium Antonini — Britannia)",
+    "tier": 1,
+    "description": "The great north road of Roman Britain, connecting Londinium (London) to the legionary fortresses at Lindum (Lincoln) and Eboracum (York). The principal route for supplying and reinforcing the northern frontier. The modern A1 'Great North Road' substantially follows Ermine Street for much of its length.",
+    "coords": [
+      [-0.0956, 51.5074], [-0.1000, 51.7500], [-0.1600, 52.0800],
+      [-0.1830, 52.3340], [-0.2300, 52.6800], [-0.5368, 53.2307],
+      [-1.0827, 53.9590]
+    ]
+  },
+  {
+    "id": "fosse-way",
+    "name": "Fosse Way",
+    "also_known_as": "Iter XIII (Britain; Itinerarium Antonini)",
+    "region": "Britannia",
+    "built": "c. 47 AD",
+    "builder": "Roman military (marks early frontier)",
+    "length": "~360 km Exeter to Lincoln",
+    "ia_ref": "Iter XIII (Itinerarium Antonini — Britannia)",
+    "tier": 2,
+    "description": "A remarkable dead-straight road cutting diagonally across England from the southwest to the northeast. Possibly marks the early frontier of the Roman province, with the native Britons to the northwest. Its unusual diagonal orientation — it doesn't connect two major cities directly — suggests it was built as a frontier road rather than a supply route.",
+    "coords": [
+      [-3.5339, 50.7184], [-2.7100, 51.0900], [-2.3590, 51.3813],
+      [-1.9668, 51.7186], [-1.5100, 52.1700], [-1.1364, 52.6369],
+      [-0.7400, 53.0200], [-0.5368, 53.2307]
+    ]
+  }
+]

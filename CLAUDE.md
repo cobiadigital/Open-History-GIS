@@ -34,6 +34,7 @@ An extensible `DATASETS` registry in `index.html` allows toggling named historic
 | Button | File | Description |
 |--------|------|-------------|
 | M. Antoinette 1770 | `data/antoinette_1770.json` | Marie Antoinette's 26-day journey Vienna → Versailles, Apr–May 1770. 41 stops. Habsburg segment (red dashed), French segment (blue dashed). Click any stop for date, location, and historical notes. |
+| Roman Roads | `data/roman_roads_ia.json` | 17 named Roman roads reconstructed from the Itinerarium Antonini. Tier-1 roads (gold `#c8a84c`), tier-2 roads (lighter ochre). Covers Italy, Gaul/Hispania, Britain, and the Balkans. Click any road for name, builder, date built, IA reference, and description. |
 
 ---
 
@@ -43,6 +44,7 @@ An extensible `DATASETS` registry in `index.html` allows toggling named historic
 index.html          — entire app; no framework, no build
 data/
   antoinette_1770.json   — 41-stop journey array
+  roman_roads_ia.json    — 17 named Roman roads (Itinerarium Antonini)
 ```
 
 ### Key external dependencies (CDN)
@@ -76,7 +78,8 @@ No other plumbing needed — toggle, lazy-load, style-switch restore, and cursor
 The core use case: rich historical journeys, events, and geographic data overlaid on the historically-accurate OHM base map. Candidates:
 
 - **Napoleon's campaigns** — routes of major campaigns with battle sites
-- **Roman roads network** — via `Itinerarium Antonini` reconstructions
+- ~~**Roman roads network** — via `Itinerarium Antonini` reconstructions~~ ✓ Done
+- **More Roman roads** — extend beyond the 17 current roads; add Hadrian's Wall, eastern roads
 - **Historical trade routes** — Silk Road, Hanseatic League, Amber Road
 - **Treaty boundaries over time** — borders at specific peace treaties (Westphalia 1648, Vienna 1815, Versailles 1919)
 - **Migration events** — Viking expansion, Mongol expansion, Crusades routes
