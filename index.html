@@ -712,26 +712,6 @@ document.getElementById('loading-badge').classList.add('show');
 
     // ── Nearest-river click selection ─────────────────────────
 
-    function haversineMiles(lat1, lon1, lat2, lon2) {
-        const R    = 3958.8;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a    = Math.sin(dLat / 2) ** 2
-                   + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
-                   * Math.sin(dLon / 2) ** 2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    function distanceToRiver(lat, lng, river) {
-        let best = Infinity;
-        for (const seg of river.segments)
-            for (const [plat, plng] of seg) {
-                const d = haversineMiles(lat, lng, plat, plng);
-                if (d < best) best = d;
-            }
-        return best;
-    }
-
     function setInfoBar(item) {
         const bar    = document.getElementById('info-bar');
         const nameEl = document.getElementById('selected-name');
@@ -798,19 +778,15 @@ document.getElementById('loading-badge').classList.add('show');
             }
         }
 
-        // River selection
-        const { lat, lng } = e.lngLat;
-        const limit        = currentMaxRank();
-        let nearest = null, best = Infinity;
-        for (const item of allRivers) {
-            if (item.scalerank > limit) continue;
-            const d = distanceToRiver(lat, lng, item.river);
-            if (d < best) { best = d; nearest = item; }
-        }
+        // River selection — only when clicking directly on a rendered river line
+        const riverHits = map.queryRenderedFeatures(e.point, { layers: ['rivers-base'] });
         clearHighlight();
-        if (!nearest || best > 75) return;
-        highlightRiver(nearest);
-        setInfoBar(nearest);
+        if (!riverHits.length) return;
+        const hitName = riverHits[0].properties.name;
+        const item = allRivers.find(r => r.river.name === hitName);
+        if (!item) return;
+        highlightRiver(item);
+        setInfoBar(item);
     });
 
     map.on('mouseenter', 'cities-layer', () => { map.getCanvas().style.cursor = 'pointer';   });
